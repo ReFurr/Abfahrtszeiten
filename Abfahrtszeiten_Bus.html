@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live-Abfahrten</title>
+    <style>
+        body {
+            font-family: "Arial Narrow", Arial, sans-serif;
+            background-color: black;
+            color: yellow;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        h1 {
+            color: yellow;
+            font-size: 5vw;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            max-width: 800px;
+            border-collapse: collapse;
+            margin: 0 auto;
+            font-size: 4vw;
+        }
+        th, td {
+            padding: 10px;
+        }
+        th {
+            font-weight: bold;
+            background-color: yellow;
+            color: black;
+            text-align: center;
+        }
+        td {
+            text-align: center;
+            border-bottom: 1px solid yellow;
+        }
+        th.line, td.line {
+            width: 15%;
+        }
+        th.name, td.name {
+            text-align: left;
+            width: 25%;
+        }
+        th.direction, td.direction {
+            text-align: left;
+            width: 30%;
+        }
+        th.departure, td.departure {
+            text-align: center;
+            width: 15%;
+        }
+        th.time, td.time {
+            width: 15%;
+        }
+        .bus-icon {
+            font-size: 1.5em;
+        }
+        @media (max-width: 768px) {
+            th, td {
+                font-size: 4vw;
+            }
+        }
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 6vw;
+            }
+            th, td {
+                font-size: 5vw;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Nächste Abfahrten Samnaun-Compatsch, Dorf (Fussweg 1')</h1>
+    
+    <table>
+        <thead>
+            <tr>
+                <th class="line">Linie</th>
+                <th class="name">Typ</th>
+                <th class="direction">Ziel</th>
+                <th class="departure">Zeit</th>
+                <th class="time">Minuten</th>
+            </tr>
+        </thead>
+        <tbody id="departure-list">
+            <!-- Dynamische Inhalte werden hier geladen -->
+        </tbody>
+    </table>
+    
+    <script>
+        async function fetchDepartures() {
+            const apiUrl = "https://transport.opendata.ch/v1/stationboard?station=Samnaun-Compatsch%2C%20Dorf&limit=20";
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                const list = document.getElementById("departure-list");
+                list.innerHTML = ""; // Tabelle leeren
+
+                const now = new Date();
+
+                let count = 0;
+                data.stationboard.forEach(item => {
+                    if (count >= 10) return;
+
+                    const departureTime = new Date(item.stop.departure);
+                    const minutesToDeparture = Math.round((departureTime - now) / 60000);
+                    const formattedTime = departureTime.toLocaleTimeString("de-DE", {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                    });
+
+                    let lineDescription = "";
+                    let destination = item.to;
+
+                    if (item.number === "921") lineDescription = "PostAuto";
+                    else if (item.number === "951") lineDescription = "SamnaunBus";
+                    else if (item.number === "952") {
+                        lineDescription = "SkiBus";
+                        destination = "Samnaun-Dorf, Musella";
+                    }
+
+                    const row = `<tr>
+                        <td class="line">${item.number}</td>
+                        <td class="name">${lineDescription}</td>
+                        <td class="direction">${destination}</td>
+                        <td class="departure">${formattedTime}</td>
+                        <td class="time">${minutesToDeparture > 0 ? minutesToDeparture + "'" : '<span class="bus-icon">🚌</span>'}</td>
+                    </tr>`;
+                    list.innerHTML += row;
+                    count++;
+                });
+
+                if (count === 0) {
+                    list.innerHTML = `<tr><td colspan="5" style="text-align: center; color: red;">Keine Abfahrten verfügbar</td></tr>`;
+                }
+            } catch (error) {
+                console.error("Fehler beim Abrufen der Abfahrtsdaten:", error);
+                document.getElementById("departure-list").innerHTML = 
+                    `<tr><td colspan="5" style="text-align: center; color: red;">Daten konnten nicht geladen werden.</td></tr>`;
+            }
+        }
+
+        window.onload = function() {
+            fetchDepartures();
+        };
+
+        setInterval(fetchDepartures, 30000);
+    </script>
+</body>
+</html>
